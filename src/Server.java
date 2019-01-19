@@ -12,6 +12,8 @@ public class Server {
 
     private ServerSocket serverSocket;
 
+    private boolean running = true;
+
     public Server() throws IOException {
 
         serverSocket = new ServerSocket(PORT, 50, InetAddress.getLocalHost());
@@ -26,33 +28,34 @@ public class Server {
         outputStream.write("hello".getBytes());
         outputStream.flush();
 
-        Thread receive = new Thread(new Runnable() {
-            @Override
-            public void run() {
-                try {
-                    byte[] buffer = new byte[1024];
-                    int read;
-                    while ((read = inputStream.read(buffer)) != -1) {
-                        System.out.println(new String(buffer, 0, read));
+        Thread receive = new Thread(() -> {
+            try {
+                byte[] buffer = new byte[1024];
+                int read;
+                while ((read = inputStream.read(buffer)) != -1) {
+                    String s = new String(buffer, 0, read);
+                    if (s.equals("exit")) {
+                        running = false;
+                        return;
                     }
-                } catch (IOException e) {
-                    //
+                    System.out.println(s);
                 }
+            } catch (IOException e) {
+                //
             }
         });
         receive.start();
 
         Scanner sc = new Scanner(System.in);
         String line;
-        while (!(line = sc.nextLine()).equals("exit")) {
+        while (!(line = sc.nextLine()).equals("exit") && running) {
             outputStream.write(line.getBytes());
         }
+        outputStream.write("exit".getBytes());
         sc.close();
+        inputStream.close();
         outputStream.close();
         client.close();
 
-//        while (client.isConnected()) {
-//
-//        }
     }
 }

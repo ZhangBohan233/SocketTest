@@ -10,35 +10,44 @@ public class Client {
 
     private Socket client;
 
-    private InputStream inputStream;
-    private OutputStream outputStream;
+    private boolean running = true;
 
-    public Client() throws IOException {
+    public Client(String ip) throws IOException {
         client = new Socket();
-        client.connect(new InetSocketAddress("192.168.2.11", 3456));
+        client.connect(new InetSocketAddress(ip, 3456));
 
-        inputStream = client.getInputStream();
-        outputStream = client.getOutputStream();
+        System.out.println("Connected to " + ip);
 
-        Thread send = new Thread(() -> {
+        InputStream inputStream = client.getInputStream();
+        OutputStream outputStream = client.getOutputStream();
+
+        Thread receive = new Thread(() -> {
             try {
-                Scanner sc = new Scanner(System.in);
-                String line;
-                while (!(line = sc.nextLine()).equals("exit")) {
-                    outputStream.write(line.getBytes());
+                byte[] buffer = new byte[1024];
+                int read;
+                while ((read = inputStream.read(buffer)) != -1) {
+                    String s = new String(buffer, 0, read);
+                    if (s.equals("exit")) {
+                        running = false;
+                        return;
+                    }
+                    System.out.println(s);
                 }
-            } catch (IOException ioe) {
-
+            } catch (IOException e) {
+                //
             }
         });
-        send.start();
+        receive.start();
 
-        byte[] buffer = new byte[1024];
-        int read;
-        while ((read = inputStream.read(buffer)) != -1) {
-            System.out.println(new String(buffer, 0, read));
+        Scanner sc = new Scanner(System.in);
+        String line;
+        while (!(line = sc.nextLine()).equals("exit") && running) {
+            outputStream.write(line.getBytes());
         }
-
-        client.close();
+        outputStream.write("exit".getBytes());
+        outputStream.flush();
+        sc.close();
+        inputStream.close();
+        outputStream.close();
     }
 }
